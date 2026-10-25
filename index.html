@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Psychiatry Interactive MCQ Quiz App</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            700: '#1b365d',
+                            800: '#102a43',
+                            900: '#0b1b2b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex flex-col antialiased selection:bg-navy-700 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-navy-800 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="selectModule('all')">
+                <div class="bg-navy-700 p-2 rounded-lg border border-navy-500">
+                    <i class="fa-solid fa-brain text-xl text-cyan-400"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide">Clinical Psychiatry Quiz App</h1>
+                    <p class="text-xs text-slate-300">Complete Board Question Bank (132 MCQs)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div id="exam-timer-display" class="hidden items-center space-x-2 bg-rose-900/80 text-rose-200 px-3 py-1.5 rounded-lg border border-rose-500/50 text-xs font-mono font-bold">
+                    <i class="fa-regular fa-clock animate-pulse"></i>
+                    <span id="timer-text">00:00</span>
+                </div>
+                <button onclick="toggleMode('practice')" id="mode-practice-btn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-600 text-white transition-colors">Practice</button>
+                <button onclick="toggleMode('exam')" id="mode-exam-btn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-slate-300 hover:text-white transition-colors">Exam Mode</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container with Sidebar + Content Area -->
+    <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col lg:flex-row gap-6">
+
+        <!-- Topic Modules Sidebar -->
+        <aside class="w-full lg:w-80 flex-shrink-0 space-y-4">
+            <!-- Overall Progress Box -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+                    <span>OVERALL PROGRESS</span>
+                    <span id="overall-score-text" class="text-navy-700">0 / 132 (0%)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div id="overall-progress-bar" class="bg-emerald-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-[11px] font-semibold pt-1">
+                    <div class="bg-slate-50 p-1.5 rounded border border-slate-100"><span id="stat-answered" class="text-navy-800 font-bold block text-sm">0</span>Answered</div>
+                    <div class="bg-emerald-50 p-1.5 rounded border border-emerald-100"><span id="stat-correct" class="text-emerald-700 font-bold block text-sm">0</span>Correct</div>
+                    <div class="bg-rose-50 p-1.5 rounded border border-rose-100"><span id="stat-incorrect" class="text-rose-700 font-bold block text-sm">0</span>Incorrect</div>
+                </div>
+            </div>
+
+            <!-- Topic Module Buttons -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-3 bg-slate-50 border-b border-slate-200 text-xs font-bold text-navy-800 uppercase tracking-wider flex justify-between items-center">
+                    <span>Curriculum Modules</span>
+                    <span class="text-[10px] text-slate-400 font-normal">8 Modules</span>
+                </div>
+                <nav class="divide-y divide-slate-100 max-h-[60vh] lg:max-h-none overflow-y-auto custom-scrollbar" id="module-nav-list">
+                    <!-- Nav items rendered via JS -->
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Question Area -->
+        <main class="flex-1 flex flex-col space-y-4">
+
+            <!-- Filter Bar & Mode Banner -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Filter:</span>
+                    <select id="filter-status" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-medium focus:ring-2 focus:ring-navy-700 focus:outline-none">
+                        <option value="all">All Questions</option>
+                        <option value="unanswered">Unanswered</option>
+                        <option value="incorrect">Incorrect</option>
+                        <option value="vignette">Clinical Vignettes Only</option>
+                        <option value="theory">Slide Recall Only</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-3 text-xs">
+                    <label class="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-600">
+                        <input type="checkbox" id="toggle-instant-exp" onchange="toggleInstantExplanation()" checked class="rounded text-navy-700 focus:ring-navy-700">
+                        <span>Show Explanations Instantly</span>
+                    </label>
+                    <button onclick="resetModuleProgress()" class="text-rose-600 hover:text-rose-800 font-semibold text-xs ml-2">Reset Progress</button>
+                </div>
+            </div>
+
+            <!-- Active Question Card -->
+            <div id="question-card" class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex-1 flex flex-col justify-between">
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="bg-slate-50 p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center space-x-2">
+                            <span id="q-number-badge" class="px-2.5 py-1 text-xs font-bold rounded-md bg-navy-700 text-white">Q1 / 132</span>
+                            <span id="q-type-badge" class="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800">CLINICAL VIGNETTE</span>
+                        </div>
+                        <span id="q-module-name" class="text-xs font-semibold text-slate-500">Module Name</span>
+                    </div>
+
+                    <!-- Stem -->
+                    <div class="p-6 space-y-6">
+                        <h3 id="q-stem-text" class="text-base sm:text-lg font-semibold text-navy-900 leading-relaxed">
+                            Loading Question Stem...
+                        </h3>
+
+                        <!-- Options List -->
+                        <div id="options-list" class="space-y-3">
+                            <!-- Options injected via JS -->
+                        </div>
+
+                        <!-- Justification Box -->
+                        <div id="justification-box" class="hidden p-4 rounded-xl bg-slate-50 border-l-4 border-navy-700 space-y-2 mt-4">
+                            <div class="flex items-center space-x-2 font-bold text-xs uppercase tracking-wider text-navy-800">
+                                <i class="fa-solid fa-circle-info text-cyan-600"></i>
+                                <span>Answer Rationale & Clinical Justification</span>
+                            </div>
+                            <p id="justification-text" class="text-xs sm:text-sm text-slate-700 leading-relaxed"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Navigation -->
+                <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+                    <button id="btn-prev" onclick="navigate(-1)" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-navy-800 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-40">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        <span>Previous</span>
+                    </button>
+
+                    <span id="q-counter-text" class="text-xs font-medium text-slate-500">1 of 25 in Module</span>
+
+                    <button id="btn-next" onclick="navigate(1)" class="px-5 py-2 text-xs font-semibold bg-navy-700 hover:bg-navy-800 text-white rounded-lg shadow transition-colors flex items-center space-x-2">
+                        <span>Next Question</span>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Complete 132 Question Bank JS -->
+    <script>
+        // Generating Complete 132 Medical Board Questions
+        const MODULES = [
+            { id: "m1", title: "Module 1: Diagnosis & Assessment", range: "Q1 - Q25", count: 25 },
+            { id: "m2", title: "Module 2: Mood Disorders", range: "Q26 - Q45", count: 20 },
+            { id: "m3", title: "Module 3: Personality Disorders", range: "Q46 - Q60", count: 15 },
+            { id: "m4", title: "Module 4: Schizophrenia & Psychosis", range: "Q61 - Q76", count: 16 },
+            { id: "m5", title: "Module 5: Somatic Symptoms", range: "Q77 - Q87", count: 11 },
+            { id: "m6", title: "Module 6: Substance-Related Disorders", range: "Q88 - Q102", count: 15 },
+            { id: "m7", title: "Module 7: Neurocognitive Disorders", range: "Q103 - Q117", count: 15 },
+            { id: "m8", title: "Module 8: Anxiety Disorders", range: "Q118 - Q132", count: 15 }
+        ];
+
+        // Generator functions to populate all 132 detailed MCQs based on Word Document structure
+        function buildFullQuestionBank() {
+            const bank = [];
+
+            // --- MODULE 1 (Q1 - Q25) ---
+            const m1_raw = [
+                ["WHO Definition of Health", "According to the World Health Organization (WHO), how is health defined?", ["The complete absence of physical disease", "A state of complete physical, mental, and social well-being, and not merely the absence of disease or infirmity", "Ability to cope with daily physical stress", "Equilibrium between somatic and mental resilience", "Absence of psychiatric disability"], 1, "WHO explicitly defines health as a state of complete physical, mental, and social well-being, and not merely the absence of disease or infirmity.", "theory"],
+                ["Disorder vs Disease", "Why are psychiatric conditions referred to as 'disorders' rather than 'diseases' in modern classification systems?", ["Psychiatric conditions cause no impairment", "Disease implies known etiology, pathophysiology, and treatment, which remain obscure for most psychiatric conditions", "Disorders are always temporary", "Disease is reserved for neurosurgery", "Psychiatric conditions lack biological involvement"], 1, "'Disorder' is preferred because disease implies clear knowledge of etiology, pathophysiology, and treatment, which are obscure for most mental illnesses.", "theory"],
+                ["Syndromal Approach", "Which approach forms the primary basis for classification in DSM-5 and ICD-11?", ["Gene deletions", "Neurotransmitter levels", "Syndromal criteria-based classification based on recognizable clusters of signs/symptoms", "Functional MRI findings", "Psychodynamic defense mechanisms"], 2, "Current classification relies on a syndromal approach—delineating recognizable clinical conditions based on symptom criteria.", "theory"],
+                ["Classification Purposes", "Which of the following is NOT a main purpose of classifying psychiatric disorders?", ["Enable effective clinician communication", "Facilitate research comprehension", "Aid in predicting prognosis", "Permanently label individuals to restrict legal rights", "Standardize diagnostic criteria"], 3, "The three major purposes of classification are: 1) Communication, 2) Comprehension, and 3) Prediction of prognosis.", "theory"],
+                ["Symptom vs Sign", "In clinical psychiatry, how do 'symptom' and 'sign' differ from general medicine?", ["Signs are reported by family", "Symptoms and signs are used synonymously because internal mental abnormalities are elicited by exploring subjective experiences", "Signs refer only to lab tests", "Symptoms are objective", "No distinction exists in general medicine"], 1, "In psychiatry, symptom and sign are often used synonymously because internal mental state abnormalities are elicited by exploring patient experiences.", "theory"],
+                ["Form vs Content", "What is the key distinction between the 'form' and 'content' of abnormal thoughts?", ["Form is cultural; content is biological", "Content refers to how thoughts link; form to beliefs", "Form reflects structural mechanism of thought linkage, while content is influenced by culture and personal experience", "Form is always psychotic", "Form refers to physical signs"], 2, "Content is individual and cultural (e.g. CIA listening), whereas form reflects structural mechanisms (e.g. flight of ideas).", "theory"],
+                ["Primary vs Secondary", "A symptom arising directly from underlying disease pathology (e.g., auditory hallucinations in schizophrenia) is:", ["Secondary symptom", "Primary symptom", "Reactive symptom", "Incongruent symptom", "Functional symptom"], 1, "Primary symptoms stem directly from underlying disease pathology, whereas secondary symptoms are psychological reactions.", "theory"],
+                ["Biopsychosocial Model", "Which model conceptualizes psychiatric conditions through Predisposing, Precipitating, Perpetuating, and Protective factors?", ["Biomedical Model", "Psychoanalytic Model", "Biopsychosocial Model (4 Ps Framework)", "Behavioral Model", "Social Constructivist Model"], 2, "The 4 Ps framework categorizes biological, psychological, and social factors into Predisposing, Precipitating, Perpetuating, and Protective dimensions.", "theory"],
+                ["Presenting Complaint Rules", "When recording Presenting Complaint (PC) in psychiatric history, which rule applies?", ["Always quote medical jargon", "Reconstruct in brief bullet points using lay/descriptive terms and exact durations of current episode", "Write a 10-year story", "Include diagnostic interpretations", "Record total lifetime duration"], 1, "PC should be concise bullet points describing symptoms in lay terms with exact durations of the current episode.", "theory"],
+                ["Treatment vs Drug History", "Why is 'Treatment History' preferred over 'Drug History' in psychiatric clerking?", ["Treatment history refers only to psychotherapy", "'Drug history' connotes illicit substances of abuse, making 'Treatment history' preferred for prescribed psychotropics", "Drug history includes surgery", "They are identical", "Treatment history is taken from informants"], 1, "'Treatment history' is preferred when listing prescribed psychotropics because 'drug' often connotes illicit substances.", "theory"],
+                ["Waxy Flexibility", "During MSE, a patient maintains an uncomfortable posture imposed by the examiner. This is an abnormality of:", ["Thought form", "Perception", "Motor behavior / Psychomotor activity", "Cognitive orientation", "Speech spontaneity"], 2, "Waxy flexibility and catatonic posturing are motor behavior manifestations evaluated on MSE.", "theory"],
+                ["Pressured Speech", "A patient speaks continuously with excessive speed, high intensity, and cannot be interrupted. This is:", ["Staccato speech", "Pressured speech", "Thought insertion", "Flight of ideas", "Mutism"], 1, "Pressured speech is rapid, loud, uninterrupted speech that is difficult or impossible to interrupt.", "theory"],
+                ["Flight of Ideas", "A patient rapidly shifts between topics connected by chance associations, puns, or rhymes. This describes:", ["Circumstantiality", "Flight of ideas", "Thought block", "Somatic delusion", "Confabulation"], 1, "Flight of ideas involves rapid shifting of thoughts connected by chance, puns, or rhymes, seen in mania.", "theory"],
+                ["Delusion Definition", "A fixed, false belief held with firm conviction despite clear evidence to the contrary, out of keeping with background, is a:", ["Illusion", "Obsession", "Delusion", "Hallucination", "Overvalued idea"], 2, "Delusions are fixed false beliefs unamenable to reason, outside cultural/religious norms.", "theory"],
+                ["Thought Insertion", "The experience that foreign thoughts are directly placed into one's mind by an outside agency is:", ["Thought broadcasting", "Thought withdrawal", "Thought insertion", "Thought echo", "Passivity of affect"], 2, "Thought insertion is the experience that thoughts in one's mind are not one's own but inserted by an external force.", "theory"],
+                ["Hallucination Definition", "A sensory perception occurring in the absence of any external physical stimulus in clear consciousness is a(n):", ["Illusion", "Hallucination", "Delusion", "Depersonalization", "Derealization"], 1, "Hallucinations are sensory perceptions without an actual external physical stimulus.", "theory"],
+                ["Illusion Definition", "A misinterpretation of a real external sensory stimulus (e.g. mistaking a coat for an intruder) is a(n):", ["Extracampine hallucination", "Pseudohallucination", "Illusion", "Thought echo", "Delusion of reference"], 2, "An illusion is a false interpretation or misperception of a real existing external stimulus.", "theory"],
+                ["Depersonalization", "Feeling detached from one's own body or mind, as if observing oneself from outside, is called:", ["Derealization", "Depersonalization", "Autoscopy", "Passivity of impulse", "Thought withdrawal"], 1, "Depersonalization refers to an alteration in the perception of the self, feeling detached from physical/mental processes.", "theory"],
+                ["Cognitive Testing", "Serial sevens (100 - 7) or spelling 'WORLD' backwards during MSE primarily tests:", ["Orientation", "Concentration and focused attention", "Immediate sensory memory", "Judgement", "Semantic memory"], 1, "Serial 7s and spelling 'WORLD' backwards test sustained attention and concentration.", "theory"],
+                ["Insight Levels", "A patient acknowledges abnormal behavior, recognizes it is caused by mental illness, and agrees to treatment. They have:", ["Level 1 Lack of Insight", "Full / Good Insight", "Intellectual Insight", "Impaired Judgement", "Concrete thinking"], 1, "Full insight encompasses awareness of illness, recognizing symptoms are psychiatric, and compliance with treatment.", "theory"],
+                ["Vignette: Catatonia", "A 24-year-old stands in rigid postures for hours, mutely resisting any attempt to move his arm. Diagnosis?", ["Apraxia", "Catatonia (waxy flexibility / negativism)", "Dystonia", "Synesthesia", "Trance state"], 1, "Posturing, mutism, stupor, and active resistance (negativism/waxy flexibility) define catatonic behavior.", "vignette"],
+                ["Vignette: Echopraxia", "A 45-year-old schizophrenia patient exactingly mimics every arm gesture and movement made by the doctor. This is:", ["Echolalia", "Echopraxia", "Folie à deux", "Dereistic thinking", "Fugue state"], 1, "Echopraxia is the pathological imitation of another person's physical movements or postures.", "vignette"],
+                ["Vignette: Abstract Thinking", "A 22-year-old student easily interprets abstract metaphors, proverbs, and complex nuances. Her thinking is:", ["Concrete thinking", "Abstract thinking", "Intellectualization", "Rationalization", "Isolation of affect"], 1, "Abstract thinking is the ability to conceptualize metaphors and general principles beyond literal meaning.", "vignette"],
+                ["Vignette: Ideas of Reference", "A 42-year-old claims TV news anchors blink in code to send him secret messages about the end of the world. This is a:", ["Grandiose delusion", "Delusion of reference", "Loose association", "Illusion", "Clouding of consciousness"], 1, "Delusions of reference involve believing neutral external broadcasts have direct, hidden personal meaning.", "vignette"],
+                ["Vignette: Serial 7s", "A 22-year-old in the ER is asked to subtract 7 from 100 sequentially. What function is being tested?", ["Orientation", "Immediate memory", "Concentration and attention", "Fund of knowledge", "Abstract reasoning"], 2, "Serial 7s testing specifically evaluates sustained attention and concentration.", "vignette"]
+            ];
+
+            m1_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m1_q${i+1}`,
+                    number: i + 1,
+                    moduleId: "m1",
+                    moduleName: "Diagnosis & Assessment",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 2 (Q26 - Q45) ---
+            const m2_raw = [
+                ["MDE Diagnostic Criteria", "How many symptoms must be present for at least 2 weeks to diagnose a Major Depressive Episode in DSM-5?", ["3 symptoms", "4 symptoms", "At least 5 symptoms, including depressed mood or anhedonia", "6 symptoms", "7 symptoms"], 2, "DSM-5 requires 5 or more symptoms present for at least 2 weeks, with at least one being depressed mood or loss of interest/pleasure.", "theory"],
+                ["Depression vs Grief", "Which feature distinguishes a Major Depressive Episode from normal Grief/Bereavement?", ["Somatic sadness", "Waves of dysphoria in pangs", "Persistent non-fluctuating depressed mood with pervasive self-critical worthlessness", "Capacity for humor", "Thoughts of joining deceased"], 2, "In grief, self-esteem is preserved. In MDE, depressed mood is persistent with pervasive worthlessness.", "theory"],
+                ["Suicide Demographics", "According to epidemiological data, peak suicide rates among men occur in which age demographic?", ["Teens 15-19", "Young adults 20-30", "Middle-aged 40-50", "Men over 75 years of age", "Constant across all ages"], 3, "Suicide rates for men increase with age and peak after 75 years of age.", "theory"],
+                ["First-line Antidepressants", "Which class represents first-line pharmacological treatment for Major Depressive Disorder?", ["MAOIs", "TCAs", "Selective Serotonin Reuptake Inhibitors (SSRIs)", "Typical Antipsychotics", "Benzodiazepines"], 2, "SSRIs and SNRIs represent preferred first-line antidepressant medications due to safety/tolerability.", "theory"],
+                ["ECT Indications", "Electroconvulsive Therapy (ECT) is indicated as first-line intervention in depression under which condition?", ["Mild depression", "Dysthymia >2 years", "Severe depression with high immediate suicide risk, severe psychosis, or pregnancy", "Hypothyroidism", "Atypical depression"], 2, "ECT is indicated for life-threatening severe depression, acute high suicide risk, psychotic depression, or pregnancy.", "theory"],
+                ["Bipolar I Prevalence", "What is the lifetime global prevalence of Bipolar I disorder?", ["0.1%", "0.6%", "5.0%", "10.0%", "15.0%"], 1, "Worldwide surveys indicate a lifetime prevalence of approximately 0.6% for Bipolar I disorder.", "theory"],
+                ["Manic Episode Duration", "DSM-5 Criterion A for a Manic Episode requires mood elevation and increased energy lasting at least:", ["2 days", "4 days", "1 week (or any duration if hospitalized)", "2 weeks", "1 month"], 2, "A manic episode requires a distinct period lasting at least 1 week (or any duration if hospitalized).", "theory"],
+                ["Bipolar Depression Clues", "Which feature strongly suggests Bipolar Depression rather than Unipolar Depression?", ["Late age of onset", "Atypical features (hypersomnia/hyperphagia), psychomotor retardation, psychosis, early onset", "Insomnia/anorexia", "No family history", "Episodes >12 months"], 1, "Bipolar depression is associated with atypical features, mood lability, psychomotor retardation, and psychosis.", "theory"],
+                ["Gold Standard Mood Stabilizer", "Which medication is the 'gold standard' for long-term maintenance of Bipolar Disorder?", ["Haloperidol", "Lithium carbonate", "Fluoxetine", "Lorazepam", "Amitriptyline"], 1, "Lithium remains the gold standard mood stabilizer for long-term prophylaxis against manic/depressive relapses.", "theory"],
+                ["Acute Mania Management", "Which drug class is recommended as immediate first-line treatment for acute mania?", ["Antidepressants", "Atypical/typical antipsychotics (e.g. Olanzapine, Risperidone, Haloperidol)", "Stimulants", "Thyroxine", "SSRI monotherapy"], 1, "Antipsychotics act rapidly and are first-line for acute manic stabilization.", "theory"],
+                ["Bipolar Depression First-line", "What is the preferred first-line pharmacotherapy for Bipolar Depression?", ["TCA monotherapy", "Quetiapine (or Olanzapine-Fluoxetine combination)", "High-dose Haloperidol", "Daily Diazepam", "Methylphenidate"], 1, "Quetiapine is preferred in bipolar depression; antidepressant monotherapy is avoided to prevent manic switching.", "theory"],
+                ["Antidepressants in Mania", "In patients presenting with acute mania, what step must be taken regarding pre-existing antidepressants?", ["Double the dose", "Immediately withdraw prescribed antidepressants", "Switch to IV", "Add a second antidepressant", "Maintain unchanged"], 1, "Antidepressants can induce or worsen mania/mixed states and must be immediately discontinued in acute mania.", "theory"],
+                ["Bipolar Relapse Rate", "What percentage of Bipolar Disorder patients experience relapse within 5-7 years after index episode?", ["10%", "30%", "50%", "80%", "100%"], 3, "Bipolar disorder is highly recurrent; ~80% of patients relapse within 5 to 7 years.", "theory"],
+                ["Dysthymia Definition", "Chronic depressed mood present for most of the day, for more days than not, for at least 2 years in adults is:", ["Disruptive Mood Dysregulation", "Persistent Depressive Disorder (Dysthymia)", "Cyclothymic Disorder", "PMDD", "Psychotic Depression"], 1, "Dysthymia (Persistent Depressive Disorder) is defined as chronic low-grade depression lasting at least 2 years.", "theory"],
+                ["SAD PERSONS Mnemonic", "Which mnemonic acronym summarizes key risk factors for suicide evaluation?", ["I WATCH DEATH", "SAD PERSONS", "DIG FAST", "SIG E CAPS", "CAGE"], 1, "SAD PERSONS assesses suicide risk factors. (SIG E CAPS assesses depression symptoms).", "theory"],
+                ["Vignette: Acute Mania", "A 27-year-old woman is found naked directing traffic, talking extremely fast with 5 days of no sleep and grandiosity. Diagnosis?", ["Major Depression", "Bipolar I Disorder, Current Episode Manic", "Dysthymia", "GAD", "Schizoid PD"], 1, "Severe euphoria/irritability, decreased sleep, pressured speech, and grandiosity meet criteria for Bipolar I Mania.", "vignette"],
+                ["Vignette: Melancholic Depression", "A 52-year-old woman presents with 3 weeks of pervasive sadness, awakening at 3 AM, weight loss, guilt, and stopped showering. Management?", ["Observation", "Initiation of SSRI (e.g., Sertraline) and safety evaluation", "Benzodiazepine monotherapy", "Psychostimulant", "Psychoanalysis only"], 1, "She meets criteria for Major Depressive Episode; first-line treatment involves SSRIs and suicide safety assessment.", "vignette"],
+                ["Vignette: Serotonin Syndrome", "A patient on fluoxetine takes phenelzine (MAOI) and develops confusion, hyperthermia (39.5°C), myoclonus, and hyperreflexia. Diagnosis?", ["EPS", "NMS", "Serotonin Syndrome", "Fluoxetine overdose", "Meningitis"], 2, "Combining SSRIs and MAOIs causes Serotonin Syndrome (hyperthermia, myoclonus, hyperreflexia, altered mental status).", "vignette"],
+                ["Vignette: Hypomania", "A 19-year-old feels happier than usual, full of energy, sleeps 4 hours/night for 5 days with no psychotic symptoms or functional impairment. Diagnosis?", ["Acute Mania", "Hypomania", "Major Depression", "Schizophrenia", "Cyclothymia"], 1, "Hypomania involves elevated mood/energy lasting at least 4 days without significant functional impairment or psychosis.", "vignette"],
+                ["Vignette: TCA Anticholinergic", "A 60-year-old depressed man with prostate hypertrophy needs an antidepressant. Which medication carries high urinary retention risk?", ["Citalopram", "Amitriptyline (TCA)", "Escitalopram", "Sertraline", "Agomelatine"], 1, "Tricyclic antidepressants (Amitriptyline) have potent anticholinergic properties that can trigger urinary retention.", "vignette"]
+            ];
+
+            m2_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m2_q${i+26}`,
+                    number: i + 26,
+                    moduleId: "m2",
+                    moduleName: "Mood Disorders",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 3 (Q46 - Q60) ---
+            const m3_raw = [
+                ["Personality Disorder Definition", "How is a Personality Disorder defined according to diagnostic criteria?", ["Transient affective disturbance", "An enduring pattern of inner experience/behavior deviating markedly from culture, pervasive, inflexible, onset in early adulthood, causing distress/impairment", "Episodic loss of reality testing <6 months", "Developmental intellectual delay", "Temporary defense mechanism"], 1, "Personality disorders are enduring, pervasive, inflexible patterns originating by early adulthood causing distress or impairment.", "theory"],
+                ["Cluster A Types", "Which personality disorders comprise Cluster A (the 'eccentric or odd' cluster)?", ["Antisocial, Borderline, Histrionic, Narcissistic", "Avoidant, Dependent, OCPD", "Paranoid, Schizoid, Schizotypal", "Passive-Aggressive, Sadistic", "Cyclothymic, Dysthymic"], 2, "Cluster A includes Paranoid, Schizoid, and Schizotypal PDs (odd/eccentric).", "theory"],
+                ["Schizoid PD", "Detachment from social relationships, preference for solitary activities, and emotional coldness characterize:", ["Avoidant PD", "Schizoid Personality Disorder", "Schizotypal PD", "Paranoid PD", "Dependent PD"], 1, "Schizoid PD involves social detachment and lack of desire for intimate relationships.", "theory"],
+                ["Schizotypal PD", "Odd beliefs, magical thinking, ideas of reference, eccentric behavior, and perceptual distortions without frank delusions define:", ["Schizoid PD", "Schizotypal Personality Disorder", "Borderline PD", "Histrionic PD", "Antisocial PD"], 1, "Schizotypal PD is defined by cognitive/perceptual distortions, magical thinking, and eccentricities.", "theory"],
+                ["Antisocial Criteria", "To diagnose Antisocial Personality Disorder (age >18), evidence must exist of which disorder before age 15?", ["Major Depression", "Conduct Disorder with onset before age 15 years", "Panic attacks", "Autism", "OCD"], 1, "Antisocial PD requires the patient to be at least 18 years old with documented Conduct Disorder before age 15.", "theory"],
+                ["Borderline PD", "Frantic efforts to avoid abandonment, splitting, identity disturbance, chronic emptiness, and recurrent self-harm characterize:", ["Histrionic PD", "Borderline Personality Disorder", "Narcissistic PD", "Dependent PD", "Schizotypal PD"], 1, "Borderline PD is defined by affective instability, splitting, abandonment fears, and parasuicidal behavior.", "theory"],
+                ["Histrionic PD", "Discomfort when not center of attention, inappropriate seductive behavior, and rapidly shifting shallow emotions define:", ["Narcissistic PD", "Histrionic Personality Disorder", "Avoidant PD", "Borderline PD", "OCPD"], 1, "Histrionic PD centers on attention-seeking, seductive behavior, and exaggerated emotionality.", "theory"],
+                ["Narcissistic PD", "Grandiosity, need for admiration, entitlement, lack of empathy, and interpersonal exploitation define:", ["Antisocial PD", "Narcissistic Personality Disorder", "Paranoid PD", "Schizotypal PD", "Borderline PD"], 1, "Narcissistic PD centers on grandiosity, entitlement, lack of empathy, and need for admiration.", "theory"],
+                ["Avoidant vs Schizoid", "How does Avoidant PD differ fundamentally from Schizoid PD?", ["Avoidant PD is indifferent to praise", "Avoidant PD desires social interaction but avoids it due to fear of rejection/inadequacy", "Avoidant PD prefers solitary hobbies", "Avoidant PD displays magical thinking", "Avoidant PD is deceitful"], 1, "Avoidant PD patients crave social closeness but fear rejection; Schizoid PD patients prefer isolation.", "theory"],
+                ["OCPD Definition", "Preoccupation with rules, orderliness, and perfectionism that hampers task completion defines:", ["OCD", "Obsessive-Compulsive Personality Disorder (OCPD)", "Dependent PD", "Schizoid PD", "Paranoid PD"], 1, "OCPD is an ego-syntonic personality pattern marked by perfectionism, rigidity, and orderliness.", "theory"],
+                ["Vignette: Antisocial PD", "A 32-year-old with assault arrests, deceitfulness, and no remorse was expelled at age 14 for stealing and fire-setting. Diagnosis?", ["Borderline PD", "Antisocial Personality Disorder", "Histrionic PD", "Schizoid PD", "Narcissistic PD"], 1, "Age >18, history of violent/deceitful behavior, lack of remorse, and conduct disorder before age 15 establish Antisocial PD.", "vignette"],
+                ["Vignette: OCPD", "An assistant registrar turns in university reports extremely late because they must be 'absolutely perfect.' He refuses to delegate. Diagnosis?", ["Obsessive-Compulsive Personality Disorder", "OCD", "Narcissistic PD", "Borderline PD", "Avoidant PD"], 0, "Inflexible perfectionism that interferes with task completion and reluctance to delegate are classic for OCPD.", "vignette"],
+                ["Vignette: Borderline PD", "A 20-year-old cuts her wrists after an argument, calling her boyfriend a 'savior' one minute and an 'evil monster' the next. Diagnosis?", ["Schizophrenia", "Borderline Personality Disorder", "Histrionic PD", "Dependent PD", "MDD"], 1, "Borderline PD presents with recurrent parasuicidal behavior, abandonment fears, and splitting.", "vignette"],
+                ["Vignette: Schizoid PD", "A 28-year-old programmer works from home, has zero friends, and states he has no interest in dating or socializing. Diagnosis?", ["Avoidant PD", "Schizoid Personality Disorder", "Social Anxiety", "Agoraphobia", "Paranoid PD"], 1, "Voluntary social detachment and indifference to social relationships are characteristic of Schizoid PD.", "vignette"],
+                ["Vignette: Conduct Disorder", "A 12-year-old boy skips school, verbally abuses parents, and ran away 3 times. What adult PD is he at risk for?", ["Antisocial Personality Disorder", "Avoidant PD", "Histrionic PD", "Schizotypal PD", "Dependent PD"], 0, "Adolescent Conduct Disorder behaviors are direct precursors to adult Antisocial Personality Disorder.", "vignette"]
+            ];
+
+            m3_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m3_q${i+46}`,
+                    number: i + 46,
+                    moduleId: "m3",
+                    moduleName: "Personality Disorders",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 4 (Q61 - Q76) ---
+            const m4_raw = [
+                ["Dementia Praecox History", "Who coined the term 'Dementia Praecox' to distinguish early cognitive decline from manic-depressive insanity?", ["Eugen Bleuler", "Emil Kraepelin", "Kurt Schneider", "Karl Jaspers", "Bénédict Morel"], 1, "Emil Kraepelin (1893) formally differentiated dementia praecox from manic-depressive insanity.", "theory"],
+                ["Bleuler 4 As", "Which set represents Bleuler's 'Four As' (core symptoms) of Schizophrenia?", ["Agitation, Anxiety, Anhedonia, Aphasia", "Association loosening, Affective blunting/incongruity, Ambivalence, Autism", "Apathy, Auditory hallucinations, Amnesia, Agoraphobia", "Alogia, Akathisia, Ataxia, Apraxia", "Automatism, Anhedonia, Alexithymia, Avoidance"], 1, "Eugen Bleuler described primary symptoms as 4 As: Loosening of Associations, Affective blunting, Ambivalence, Autism.", "theory"],
+                ["Global Schizophrenia Prevalence", "What is the approximate lifetime global prevalence of Schizophrenia?", ["0.1%", "1.0% (0.3% - 0.7%)", "5.0%", "10.0%", "15.0%"], 1, "Schizophrenia has a worldwide population prevalence of approximately 1%.", "theory"],
+                ["Dopamine Hypothesis", "In Schizophrenia, mesolimbic hyperdopaminergia causes X, while mesocortical hypodopaminergia causes Y. What are X and Y?", ["X=Negative, Y=Positive", "X=Positive symptoms (hallucinations/delusions), Y=Negative and cognitive symptoms", "X=Catatonia, Y=Mania", "X=Anxiety, Y=Depression", "X=Dyskinesia, Y=Tremor"], 1, "Mesolimbic hyperdopaminergia causes positive symptoms; mesocortical hypodopaminergia causes negative symptoms.", "theory"],
+                ["Diagnostic Duration", "DSM-5 requires active schizophrenia symptoms for 1 month, with total continuous signs persisting for at least:", ["1 week", "1 month", "3 months", "6 months", "12 months"], 3, "DSM-5 requires continuous signs of disturbance to persist for at least 6 months.", "theory"],
+                ["Neuroimaging Findings", "Which neuroimaging finding is classically observed on CT/MRI in Schizophrenia patients?", ["Cerebellar atrophy", "Enlargement of lateral ventricles and reduced medial temporal lobe volume", "Basal ganglia calcification", "Parietal hyperdensity", "Pituitary adenoma"], 1, "Neuroimaging characteristically reveals lateral ventricular enlargement and reduced brain volume.", "theory"],
+                ["Negative Symptoms", "Which symptom belongs to the 'Negative Symptoms' domain of Schizophrenia?", ["Command auditory hallucinations", "Persecutory delusions", "Avolition, affective flattening, and alogia", "Flight of ideas", "Catatonic posturing"], 2, "Negative symptoms reflect loss of normal function: affective flattening, alogia, and avolition.", "theory"],
+                ["Delusional Disorder", "Delusional Disorder is distinguished from Schizophrenia primarily by:", ["Prominent 3rd person voices", "Systematized delusions without prominent hallucinations or marked functional/personality deterioration", "Duration <2 weeks", "Catatonia", "Clouded sensorium"], 1, "Delusional disorder features systematized delusions lasting >1 month without marked deterioration in daily functioning.", "theory"],
+                ["Brief Psychotic Disorder", "A psychotic episode with sudden onset lasting at least 1 day but resolving completely within 1 month is:", ["Schizophreniform Disorder", "Brief Psychotic Disorder", "Schizoaffective Disorder", "Delusional Disorder", "Bipolar Psychosis"], 1, "Brief Psychotic Disorder lasts between 1 day and 1 month with full return to premorbid functioning.", "theory"],
+                ["Schizoaffective Criteria", "A major mood episode concurrent with schizophrenia symptoms, PLUS at least 2 weeks of delusions/hallucinations WITHOUT mood symptoms is:", ["Psychotic Depression", "Psychotic Bipolar", "Schizoaffective Disorder", "Brief Psychotic Disorder", "Delusional Disorder"], 2, "Schizoaffective Disorder requires concurrent mood symptoms plus >=2 weeks of psychosis without mood symptoms.", "theory"],
+                ["Clozapine Agranulocytosis", "Which second-generation antipsychotic is reserved for treatment-resistant cases due to agranulocytosis risk?", ["Risperidone", "Olanzapine", "Clozapine", "Haloperidol", "Aripiprazole"], 2, "Clozapine is the most effective antipsychotic for refractory schizophrenia, but requires WBC monitoring for agranulocytosis.", "theory"],
+                ["Vignette: Clozapine Monitoring", "A 25-year-old on clozapine requires mandatory weekly blood monitoring. Which parameter is critical?", ["Serum creatinine", "Platelets", "RBC count", "White blood cell (absolute neutrophil) count", "Serum sodium"], 3, "Monitoring absolute neutrophil and white blood cell counts is mandatory on clozapine.", "vignette"],
+                ["Vignette: Akathisia", "A patient taking haloperidol reports agonizing motor restlessness and paces corridors, stating 'my legs feel like moving on their own.' Diagnosis?", ["Acute Dystonia", "Akathisia", "Tardive Dyskinesia", "NMS", "Worsening Psychosis"], 1, "Akathisia is an extrapyramidal symptom characterized by subjective inner restlessness and urge to move.", "vignette"],
+                ["Vignette: Erotomanic Delusion", "A 37-year-old accountant believes a famous politician sends her secret love letters. She functions normally at work. Diagnosis?", ["Schizophrenia", "Delusional Disorder, Erotomanic Type", "Schizoaffective Disorder", "Brief Psychotic Disorder", "Histrionic PD"], 1, "Erotomanic delusional disorder is the fixed belief that another person (usually of higher status) is in love with the patient.", "vignette"],
+                ["Vignette: 3rd Person Voices", "A schizophrenia patient hears two voices discussing her in the third person: 'she is an evil person.' This is a:", ["2nd person voice", "3rd person running commentary auditory hallucination", "Thought echo", "Hypnagogic hallucination", "Extracampine voice"], 1, "Voices discussing the patient in the third person or providing running commentary are First Rank Symptoms.", "vignette"],
+                ["Vignette: Incongruent Affect", "A patient laughs aloud uncontrollably while describing the tragic death of his father. This affect is:", ["Flat affect", "Incongruent affect", "Emotional lability", "Depressed mood", "Clang association"], 1, "Incongruent affect occurs when expressed emotional response contradicts the conceptual content of speech.", "vignette"]
+            ];
+
+            m4_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m4_q${i+61}`,
+                    number: i + 61,
+                    moduleId: "m4",
+                    moduleName: "Schizophrenia & Psychosis",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 5 (Q77 - Q87) ---
+            const m5_raw = [
+                ["SSD Criteria", "Under DSM-5 criteria, what is the key defining feature of Somatic Symptom Disorder (SSD)?", ["Feigning symptoms for money", "One or more distressing physical symptoms accompanied by excessive thoughts, anxiety, and time devoted to health concerns for >=6 months", "Preoccupation with disease without symptoms", "Nocturnal sensory loss", "Falsifying lab tests"], 1, "SSD involves distressing somatic symptoms plus disproportionate thoughts, anxiety, or time spent focusing on health for >=6 months.", "theory"],
+                ["IAD vs SSD", "How does Illness Anxiety Disorder (IAD) differ from Somatic Symptom Disorder (SSD)?", ["SSD has no physical symptoms", "In IAD, somatic symptoms are minimal or absent; core disturbance is intense anxiety/preoccupation about having an illness", "IAD is malingering", "SSD occurs only in children", "IAD responds to surgery"], 1, "In IAD, somatic symptoms are minimal or absent; the core issue is high anxiety about having a serious illness.", "theory"],
+                ["IAD Subtypes", "What are the two clinical behavioral subtypes of Illness Anxiety Disorder in DSM-5?", ["Primary and Secondary", "Care-seeking type and Care-avoidant type", "Psychotic and Neurotic", "Endogenous and Reactive", "Organic and Functional"], 1, "DSM-5 classifies IAD into Care-seeking type (frequent medical visits) and Care-avoidant type.", "theory"],
+                ["Conversion Disorder", "Conversion Disorder (Functional Neurological Symptom Disorder) is clinically characterized by:", ["Feigned paralysis for money", "Symptoms of altered voluntary motor/sensory function incompatible with neurological conditions, often post-stress", "Worry about dermatological infections", "Facial feature flaws", "Temporal lobe spikes"], 1, "Conversion disorder involves neurological symptoms (paralysis, blindness) incompatible with anatomy, triggered by stress.", "theory"],
+                ["Factitious Disorder", "What is the primary feature of Factitious Disorder (Munchausen Syndrome)?", ["Unconscious paralysis", "Intentional falsification or induction of physical/psychological signs in self/other without external rewards", "Intentional faking for financial gain", "Worry about skin lesions", "Rotting organs delusion"], 1, "Factitious Disorder involves intentionally producing symptoms to assume the sick role, without secondary external gain.", "theory"],
+                ["Malingering vs Factitious", "How does Malingering differ fundamentally from Factitious Disorder?", ["Malingering is a DSM diagnosis", "Malingering is motivated by explicit external incentives (money, court avoidance), whereas Factitious Disorder lacks external rewards", "Malingering is neurological", "Factitious is medical", "No difference"], 1, "Malingering is motivated by explicit external gain (financial/legal). Factitious disorder is motivated by assuming the sick role.", "theory"],
+                ["Vignette: Conversion Paralysis", "A 30-year-old woman suddenly loses arm movement post-argument. Normal MRI/EMG and positive Hoover's sign. Diagnosis?", ["Somatic Symptom Disorder", "Conversion Disorder (Functional Neurological Symptom Disorder)", "Factitious Disorder", "Malingering", "Illness Anxiety Disorder"], 1, "Sudden motor loss triggered by psychological stress, incompatible with anatomical pathways (positive Hoover sign), defines Conversion Disorder.", "vignette"],
+                ["Vignette: Illness Anxiety", "A 42-year-old insists he has pancreatic cancer despite negative CTs/endoscopy. He has no real pain but spends 4 hours daily checking. Diagnosis?", ["Somatic Symptom Disorder", "Illness Anxiety Disorder (Care-seeking type)", "Conversion Disorder", "Factitious Disorder", "Somatic Delusion"], 1, "Preoccupation with serious illness in the absence of significant somatic symptoms defines Illness Anxiety Disorder.", "vignette"],
+                ["Vignette: Factitious Exogenous Insulin", "A nurse presents with hypoglycemia, high insulin, low C-peptide, and hidden insulin vials. She states she wanted care. Diagnosis?", ["Conversion Disorder", "Factitious Disorder Imposed on Self", "Malingering", "Somatic Symptom Disorder", "Illness Anxiety Disorder"], 1, "Exogenous insulin administration (high insulin, low C-peptide) without financial gain to assume the sick role defines Factitious Disorder.", "vignette"],
+                ["Vignette: Malingering", "A man awaiting armed robbery trial claims leg paralysis, but guards record him walking unassisted at night to get food. Diagnosis?", ["Conversion Disorder", "Factitious Disorder", "Malingering", "Somatic Symptom Disorder", "Catatonia"], 2, "Intentional production of false symptoms explicitly motivated by external incentives (avoiding prison/trial) constitutes Malingering.", "vignette"],
+                ["Vignette: Somatic Symptom Disorder", "A 38-year-old has persistent back pain and fatigue for 10 months post-trauma, spending all day worrying her life is ruined despite normal workups. Diagnosis?", ["Somatic Symptom Disorder", "Illness Anxiety Disorder", "Conversion Disorder", "Factitious Disorder", "Malingering"], 0, "Genuine somatic symptoms coupled with excessive thoughts, anxiety, and time devoted to health concerns for >=6 months meets SSD criteria.", "vignette"]
+            ];
+
+            m5_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m5_q${i+77}`,
+                    number: i + 77,
+                    moduleId: "m5",
+                    moduleName: "Somatic Symptoms",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 6 (Q88 - Q102) ---
+            const m6_raw = [
+                ["DSM-5 Substance Terms", "In DSM-5, how were previous terms 'substance abuse' and 'substance dependence' revised?", ["Separated into neuro vs behavioral", "Combined into a single category 'Substance Use Disorder' graded by severity (mild, moderate, severe)", "Replaced by Excessive Drinking", "Transferred under OCD", "Eliminated"], 1, "DSM-5 combined abuse and dependence into 'Substance Use Disorder', severity rated by number of criteria met.", "theory"],
+                ["4 Cs of Addiction", "What are the '4 Cs' commonly used to describe core features of addiction?", ["Cognition, Confusion, Coma, Convulsion", "Craving, Compulsion, Loss of Control, Continued use despite Consequences", "Cirrhosis, Cardiomyopathy, Cancer, Cognitive decline", "Cannabis, Cocaine, Codeine, Cathinone", "Care-seeking, Care-avoidant, Catatonia, Catalepsy"], 1, "The 4 Cs are Craving, Compulsion, inability to Control use, and continued use despite negative Consequences.", "theory"],
+                ["Uncomplicated Withdrawal Time", "Uncomplicated alcohol withdrawal typically begins how long after cessation of heavy drinking?", ["1-2 hours", "6 to 18 hours", "48-72 hours", "5-7 days", "2 weeks"], 1, "Uncomplicated alcohol withdrawal (tremors, anxiety, autonomic hyperactivity) begins 6 to 18 hours after last intake.", "theory"],
+                ["Delirium Tremens Time", "Delirium Tremens (alcohol withdrawal delirium) characteristically presents at what timeframe post-cessation?", ["1-4 hours", "6-12 hours", "48 to 72 hours (2-3 days)", "10-14 days", "1 month"], 2, "Delirium Tremens peaks 48 to 72 hours (2-3 days) post-cessation, featuring confusion, tremor, and visual hallucinations.", "theory"],
+                ["Withdrawal First-line Drug", "Which drug class is gold-standard first-line treatment for managing acute alcohol withdrawal?", ["Typical Antipsychotics", "Benzodiazepines (e.g. Diazepam, Lorazepam)", "SSRIs", "Naltrexone", "Phenytoin"], 1, "Benzodiazepines show cross-tolerance with alcohol at GABA-A receptors, suppressing withdrawal and seizures.", "theory"],
+                ["Thiamine before Glucose Protocol", "In severe alcohol use disorder, why MUST Thiamine (B1) be given BEFORE or concurrently with IV Glucose?", ["Prevent hyperglycemia", "Prevent precipitating or worsening Wernicke's Encephalopathy", "Glucose destroys thiamine", "Thiamine increases glucose absorption", "Prevent renal tubular necrosis"], 1, "Administering IV glucose without thiamine drives glucose metabolism, depleting remaining thiamine and precipitating Wernicke encephalopathy.", "theory"],
+                ["THC Mechanism", "Which active chemical constituent in Cannabis sativa acts on CNS CB1 and CB2 cannabinoid receptors?", ["CBD only", "Delta-9-tetrahydrocannabinol (THC)", "Nicotine", "LSD", "Diacetylmorphine"], 1, "Delta-9-THC is the primary psychoactive cannabinoid in marijuana responsible for intoxication.", "theory"],
+                ["Opioid Intoxication Toxidrome", "Pinpoint pupils (miosis), respiratory depression, drowsiness, hypotension, and bradycardia indicate intoxication with:", ["Cocaine", "Amphetamines", "Opioids (e.g. Heroin, Morphine, Tramadol)", "Cannabis", "LSD"], 2, "Opioid intoxication toxidrome consists of miosis, respiratory depression, sedation, bradycardia, and hypotension.", "theory"],
+                ["Opioid Withdrawal Toxidrome", "Opioid withdrawal features which constellation of autonomic and physical symptoms?", ["Pinpoint pupils, constipation", "Lacrimation, rhinorrhea, yawning, piloerection (goosebumps), pupil dilation, abdominal cramps, diarrhea", "Hyperphagia, hypersomnia", "Visual hallucinations, seizures", "Ataxia, nystagmus"], 1, "Opioid withdrawal produces autonomic hyperactivity: lacrimation, rhinorrhea, yawning, piloerection, dilated pupils, and diarrhea.", "theory"],
+                ["Behavioral Addiction in DSM-5", "Which non-substance behavioral addiction is formally recognized in the DSM-5 main classification?", ["Internet Gaming Disorder", "Gambling Disorder", "Compulsive Shopping", "Hypersexual Disorder", "Social Media Addiction"], 1, "Gambling Disorder is the only behavioral addiction fully recognized in the main DSM-5 classification.", "theory"],
+                ["Vignette: Delirium Tremens Tx", "A 56-year-old post-op day 3 alcoholic is confused, diaphoretic, tremulous, and sees spiders on bedsheets. First-line therapy?", ["IV Dextrose monotherapy", "Intravenous Diazepam and High-dose Parenteral Thiamine", "Oral Haloperidol monotherapy", "Oral Chlorpromazine", "Disulfiram"], 1, "Delirium Tremens requires parenteral benzodiazepines for autonomic control plus parenteral thiamine.", "vignette"],
+                ["Vignette: Tramadol Withdrawal", "A man abruptly stops non-prescribed Tramadol after 6 years of daily use. What symptoms will occur at 24 hours?", ["Bradycardia, hypothermia", "Nausea, vomiting, diarrhea, lacrimation, rhinorrhea, yawning, piloerection", "Visual hallucinations, nystagmus", "Hyperphagia, deep sleep", "Hypotension, urinary retention"], 1, "Tramadol is a synthetic opioid agonist; abrupt withdrawal causes classic opioid withdrawal symptoms.", "vignette"],
+                ["Vignette: Wernicke Triad", "An alcoholic patient in the ER is confused, exhibits horizontal nystagmus, abducens palsy, and gait ataxia. Diagnosis?", ["Korsakoff Psychosis", "Wernicke Encephalopathy", "Alcoholic Hallucinosis", "Delirium Tremens", "Hepatic Encephalopathy"], 1, "The triad of confusion, ophthalmoplegia/nystagmus, and gait ataxia defines Wernicke Encephalopathy.", "vignette"],
+                ["Vignette: Nomophobia", "A student experiences intense anxiety when separated from his smartphone and feels phantom vibrations. This is termed:", ["Agoraphobia", "Nomophobia", "Xenophobia", "Claustrophobia", "Acrophobia"], 1, "Nomophobia ('no mobile phone phobia') describes anxiety arising from lacking mobile connectivity.", "vignette"],
+                ["Vignette: Alcohol Intoxication", "A security guard smells of alcohol, is unsteady on his feet (ataxic), with slurred speech and disinhibition. Diagnosis?", ["Withdrawal Delirium", "Acute Alcohol Intoxication", "Wernicke-Korsakoff", "Alcoholic Hallucinosis", "Cannabis Intoxication"], 1, "Slurred speech, ataxia, incoordination, odor of alcohol, and behavioral disinhibition define acute alcohol intoxication.", "vignette"]
+            ];
+
+            m6_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m6_q${i+88}`,
+                    number: i + 88,
+                    moduleId: "m6",
+                    moduleName: "Substance-Related Disorders",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 7 (Q103 - Q117) ---
+            const m7_raw = [
+                ["Delirium vs Dementia Core", "Which core feature fundamentally differentiates Delirium from Dementia?", ["Dementia has acute onset", "Delirium features acute onset, fluctuating course, clouding of consciousness, and altered attention, whereas dementia is insidious, progressive, with clear sensorium early", "Delirium memory loss is worse", "Dementia is reversible", "Delirium is psychiatric"], 1, "Delirium is acute, fluctuating, reversible, and marked by clouded sensorium/attention. Dementia is chronic and progressive.", "theory"],
+                ["I WATCH DEATH Mnemonic", "What mnemonic acronym is used to screen for physical etiologies of Delirium?", ["SAD PERSONS", "I WATCH DEATH", "SIG E CAPS", "DIG FAST", "CAGE"], 1, "I WATCH DEATH covers causes of delirium (Infections, Withdrawal, Acute metabolic, Trauma, CNS, Hypoxia, Deficiencies, Endocrinopathies, Toxins).", "theory"],
+                ["Delirium Criterion A", "In DSM-5 criteria for Delirium, Criterion A requires a disturbance in:", ["Long-term memory", "Attention (reduced ability to direct/focus/sustain/shift attention) and awareness", "Proverb interpretation", "Motor reflexes", "Language fluency"], 1, "Disturbance in attention and awareness developing over a short period and fluctuating is Criterion A for Delirium.", "theory"],
+                ["Alzheimer Prevalence", "What is the single most common cause of neurodegenerative dementia (50-60% of cases)?", ["Vascular Dementia", "Frontotemporal Dementia", "Alzheimer's Disease", "Dementia with Lewy Bodies", "Parkinson's Dementia"], 2, "Alzheimer's Disease is the primary etiology in 50-60% of all neurocognitive dementia cases.", "theory"],
+                ["Alzheimer Histopathology", "Microscopic neuropathological hallmarks of Alzheimer's Disease include:", ["Alpha-synuclein Lewy bodies", "Extracellular Beta-Amyloid senile plaques and intracellular Neurofibrillary Tangles (tau protein)", "Pick bodies in frontotemporal lobes", "Spongiform vacuolation", "Lacunar brainstem infarcts"], 1, "Pathognomonic histopathology consists of extracellular beta-amyloid plaques and intracellular tau neurofibrillary tangles.", "theory"],
+                ["Dementia with Lewy Bodies", "Early prominent visual hallucinations, fluctuating cognition, and parkinsonism with alpha-synuclein inclusions characterize:", ["Alzheimer's Disease", "Dementia with Lewy Bodies (DLB)", "Frontotemporal Dementia", "Vascular Dementia", "Normal Pressure Hydrocephalus"], 1, "The triad of progressive cognitive decline with early visual hallucinations, fluctuations, and parkinsonism defines DLB.", "theory"],
+                ["Frontotemporal Dementia", "Striking behavioral disinhibition, loss of empathy, hyperorality, and executive dysfunction in a patient <60 years indicates:", ["Alzheimer's Disease", "Frontotemporal Dementia (Pick's Disease)", "Vascular Dementia", "Creutzfeldt-Jakob", "Neurosyphilis"], 1, "Frontotemporal Dementia presents in younger patients (age 50s) with prominent personality and behavioral changes.", "theory"],
+                ["Vascular Dementia Course", "Which dementia classically demonstrates abrupt onset, a stepwise clinical deterioration course, and microvascular infarcts on MRI?", ["Alzheimer's", "Vascular Dementia (Multi-Infarct Dementia)", "Frontotemporal Dementia", "Dementia with Lewy Bodies", "Huntington's"], 1, "Vascular dementia is characterized by a stepwise drop in cognition corresponding to cerebrovascular ischemic events.", "theory"],
+                ["Alzheimer Pharmacotherapy", "Which classes of medications are FDA-approved symptomatic pharmacotherapies for Alzheimer's Disease?", ["Typical Antipsychotics", "Cholinesterase Inhibitors (Donepezil, Rivastigmine, Galantamine) and NMDA antagonist (Memantine)", "Benzodiazepines", "SSRIs", "Stimulants"], 1, "Donepezil, Rivastigmine, Galantamine (cholinesterase inhibitors) and Memantine (NMDA antagonist) treat Alzheimer's symptoms.", "theory"],
+                ["Reversible Dementia Workup", "Which reversible causes of cognitive decline must always be excluded during dementia workup?", ["Vitamin B12 deficiency, Hypothyroidism, Neurosyphilis/HIV, Normal Pressure Hydrocephalus", "Hypervitaminosis C", "Hypertension only", "Diabetes Insipidus", "Osteoarthritis"], 0, "Reversible cognitive impairment causes include B12 deficiency, thyroid dysfunction, HIV/syphilis, and NPH.", "theory"],
+                ["Vignette: Post-op Delirium", "A 75-year-old post-op day 2 hip surgery patient becomes confused and disoriented, fluctuating between morning and evening. She has a UTI. Diagnosis?", ["Alzheimer's Disease", "Acute Delirium secondary to UTI", "Vascular Dementia", "Schizophrenia", "Dysthymia"], 1, "Acute onset of fluctuating disorientation, clouded sensorium, post-surgical state, and infection (UTI) define Delirium.", "vignette"],
+                ["Vignette: Alzheimer Presentation", "A 74-year-old woman has progressive memory loss for 10 years, causes kitchen fires, and calls items 'that thing', with clear sensorium. Diagnosis?", ["Alzheimer's Disease", "Delirium", "Frontotemporal Dementia", "Vascular Dementia", "CJD"], 0, "Insidious onset, gradual progressive memory decline, executive failure, and nominal aphasia represent classic Alzheimer's.", "vignette"],
+                ["Vignette: Fever + Acute Confusion", "A 70-year-old woman presents with fever and acute confusion for 3 days. What is the most probable diagnosis?", ["Acute Dementia", "Alzheimer's Disease", "Delirium", "Schizophrenia", "Borderline PD"], 2, "Acute confusion accompanying a fever (systemic infection) in an elderly individual is Delirium until proven otherwise.", "vignette"],
+                ["Vignette: Pseudodementia vs Dementia", "Which feature strongly favors Dementia over Major Depression (pseudodementia)?", ["Acute onset over days", "Patient emphasizing memory failures during testing", "Insidious onset, near-miss answers on cognitive tests, and lack of awareness/concern regarding deficits", "Diurnal mood shift", "Rapid response to antidepressants"], 2, "True dementia patients make 'near-miss' errors and minimize deficits. Pseudodementia patients complain bitterly and say 'I don't know'.", "vignette"],
+                ["Vignette: DT Visual Hallucinations", "A post-op alcoholic on day 4 becomes confused and screams that red spiders are crawling on walls. Diagnosis?", ["Wernicke Encephalopathy", "Delirium Tremens", "Alzheimer's", "Schizophrenia", "Bipolar Mania"], 1, "Post-operative acute confusion, visual hallucinations (micropsia/insects), and tremor 3-4 days post-admission reflect DTs.", "vignette"]
+            ];
+
+            m7_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m7_q${i+103}`,
+                    number: i + 103,
+                    moduleId: "m7",
+                    moduleName: "Neurocognitive Disorders",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            // --- MODULE 8 (Q118 - Q132) ---
+            const m8_raw = [
+                ["Anxiety Neurotransmitters", "Which three major neurotransmitters are most strongly implicated in Anxiety Disorders?", ["Dopamine, Acetylcholine, Histamine", "Norepinephrine, Serotonin, Gamma-Aminobutyric Acid (GABA)", "Glutamate, Substance P, Endorphin", "Oxytocin, Prolactin, Cortisol", "Melatonin, Glycine, Orexin"], 1, "Anxiety pathophysiology centers on dysregulation of Norepinephrine, Serotonin, and GABA.", "theory"],
+                ["Pathological Anxiety Definition", "Which feature distinguishes Pathological Anxiety from Normal Physiological Anxiety?", ["Pathological anxiety involves autonomic arousal", "Pathological anxiety is excessive, persistent, out of proportion to threat, causes distress/impairment, and persists without danger", "Normal anxiety causes occupational failure", "Pathological anxiety occurs only in physical trauma", "Normal anxiety has no muscle tension"], 1, "Pathological anxiety is disproportionate to threat, persistent, uncontrollable, and impairs daily function.", "theory"],
+                ["Panic Disorder Criteria", "Panic Disorder is clinically defined by:", ["Continuous low-grade worry for 2 years", "Recurrent, unexpected panic attacks reaching a peak within minutes, followed by >=1 month of persistent worry about future attacks", "Fear of heights on ladders", "Acute stress <3 days", "Counting rituals"], 1, "Panic Disorder requires recurrent unexpected panic attacks plus >=1 month of persistent concern or behavioral change.", "theory"],
+                ["Agoraphobia 5 Situations", "Agoraphobia involves marked fear/anxiety about two or more of which 5 situations?", ["Heights, spiders, blood, storms, darkness", "Using public transport, open spaces, enclosed spaces, standing in line/crowds, or being outside home alone", "Public speaking, eating in public, writing, meeting bosses, exams", "Germs, contamination, sharp objects, fires, spills", "Strangers, cats, water, elevators, dogs"], 1, "Agoraphobia criteria specify fear/avoidance of public transit, open spaces, enclosed spaces, lines/crowds, or being outside home alone.", "theory"],
+                ["Social Anxiety Disorder", "Social Anxiety Disorder (Social Phobia) is characterized by persistent fear and avoidance of:", ["Enclosed elevators", "Social situations where exposed to potential scrutiny by others for fear of embarrassment or negative evaluation", "Specific animals", "Contamination in restrooms", "Leaving home without spouse"], 1, "Social Anxiety Disorder centers on fear of scrutiny, humiliation, or embarrassment during social interactions or public performance.", "theory"],
+                ["GAD Duration Criteria", "Generalized Anxiety Disorder (GAD) requires excessive anxiety and worry present more days than not for at least:", ["2 weeks", "1 month", "3 months", "6 months", "12 months"], 3, "GAD requires persistent excessive worry occurring more days than not for at least 6 months.", "theory"],
+                ["GAD Somatic Symptoms", "In GAD, excessive worry must be accompanied by at least 3 somatic/cognitive symptoms, including:", ["Command voices", "Restlessness/keyed up, muscle tension, fatigue, difficulty concentrating, irritability, sleep disturbance", "Waxy flexibility", "Short-term memory loss", "Elevated mood"], 1, "Associated GAD symptoms include restlessness, fatigability, concentration difficulty, irritability, muscle tension, and sleep disturbance.", "theory"],
+                ["GAD First-line Maintenance", "Which pharmacological class is preferred for long-term maintenance of Generalized Anxiety Disorder and Panic Disorder?", ["Daily Benzodiazepines", "Selective Serotonin Reuptake Inhibitors (SSRIs) / SNRIs", "First-gen Antipsychotics", "Barbiturates", "Psychostimulants"], 1, "SSRIs and SNRIs are preferred long-term treatments for anxiety disorders due to lack of dependence risks.", "theory"],
+                ["Acute Panic Rapid Relief", "When immediate rapid relief of severe acute panic/anxiety is required, which drug class is used for short-term bridge therapy?", ["Fluoxetine", "Benzodiazepines (e.g. Alprazolam, Diazepam, Lorazepam)", "Haloperidol", "Lithium", "Valproate"], 1, "Benzodiazepines act rapidly at GABA-A receptors for immediate relief of severe acute anxiety, while SSRIs take 2-4 weeks.", "theory"],
+                ["Behavioral Therapy for Phobias", "Flooding and Systematic Desensitization are behavioral psychological therapies primarily used in treating:", ["Schizophrenia negative symptoms", "Specific Phobias and Agoraphobia", "MDD melancholia", "Anorexia Nervosa", "Delirium Tremens"], 1, "Systematic desensitization and flooding are key behavioral exposure treatments for phobias.", "theory"],
+                ["Vignette: Depersonalization Panic", "A 26-year-old with panic disorder reports feeling disconnected from her physical body as if in a dream during attacks. Symptom?", ["Derealization", "Depersonalization", "Illusion", "Thought echo", "Visual hallucination"], 1, "Feeling detached or disconnected from one's own physical body or mental self is depersonalization.", "vignette"],
+                ["Vignette: Agoraphobia", "A woman refuses to leave home alone because going outside causes chest tightness and panic, fearing escape is impossible. Diagnosis?", ["Agoraphobia (with Panic Attacks)", "Social Anxiety Disorder", "Specific Phobia", "OCD", "Dependent PD"], 0, "Avoidance of leaving home or open/public spaces due to fear that escape will be unavailable during panic defines Agoraphobia.", "vignette"],
+                ["Vignette: Panic Attack", "An 18-year-old college student experiences repeated 20-minute episodes of sudden overwhelming chest pain, trembling, and fear of dying out of the blue. Diagnosis?", ["Generalized Anxiety Disorder", "Panic Disorder", "Specific Phobia", "MDD", "Pheochromocytoma"], 1, "Abrupt surges of intense terror reaching a peak within minutes with autonomic/cardiac symptoms define Panic Attack / Panic Disorder.", "vignette"],
+                ["Vignette: GAD Long-term Tx", "A woman has restlessness, muscle tension, and insomnia on most days for 6 months, constantly worrying about finances and health. Best long-term drug?", ["Daily Diazepam", "Selective Serotonin Reuptake Inhibitors (SSRI, e.g., Sertraline or Paroxetine)", "Haloperidol", "ECT", "Disulfiram"], 1, "GAD criteria (>6 months of pervasive worry + somatic symptoms) are best managed long-term with SSRIs/SNRIs and CBT.", "vignette"],
+                ["Vignette: Exposure Therapy", "A medical officer develops severe panic whenever entering the operating theater after losing a surgical patient. Initial psychological therapy?", ["Free association", "Systematic Desensitization / Exposure Therapy", "ECT", "Detoxification", "Antipsychotics"], 1, "Conditioned phobic anxiety triggers in specific settings respond best to behavioral exposure techniques like systematic desensitization.", "vignette"]
+            ];
+
+            m8_raw.forEach((item, i) => {
+                bank.push({
+                    id: `m8_q${i+118}`,
+                    number: i + 118,
+                    moduleId: "m8",
+                    moduleName: "Anxiety Disorders",
+                    topic: item[0],
+                    question: item[1],
+                    options: item[2],
+                    answer: item[3],
+                    justification: item[4],
+                    type: item[5]
+                });
+            });
+
+            return bank;
+        }
+
+        // --- GLOBAL APP STATE ---
+        const ALL_QUESTIONS = buildFullQuestionBank();
+        let userAnswers = {}; // { qId: selectedOptionIndex }
+        let currentModuleFilter = "all";
+        let activeFilteredList = [...ALL_QUESTIONS];
+        let activeQuestionIndex = 0;
+        let isExamMode = false;
+        let examTimerInterval = null;
+        let examTimeRemaining = 0;
+
+        // Initialize App on Page Load
+        window.onload = function() {
+            renderModuleNav();
+            updateOverallProgress();
+            applyFilters();
+        };
+
+        // Render Topic Modules Navigation
+        function renderModuleNav() {
+            const nav = document.getElementById("module-nav-list");
+            let html = `
+                <button onclick="selectModule('all')" id="nav-btn-all" class="w-full text-left px-4 py-3 flex items-center justify-between text-xs font-semibold hover:bg-slate-50 transition-colors border-l-4 border-navy-700 bg-navy-50 text-navy-800">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-layer-group text-cyan-600"></i>
+                        <span>All Modules Combined</span>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full bg-navy-200 text-navy-800 text-[10px] font-bold">132</span>
+                </button>
+            `;
+
+            MODULES.forEach(m => {
+                html += `
+                    <button onclick="selectModule('${m.id}')" id="nav-btn-${m.id}" class="w-full text-left px-4 py-3 flex items-center justify-between text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors border-l-4 border-transparent">
+                        <div class="truncate pr-2">
+                            <span class="block font-semibold text-navy-900 truncate">${m.title}</span>
+                            <span class="text-[10px] text-slate-400 block">${m.range}</span>
+                        </div>
+                        <span id="nav-badge-${m.id}" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">${m.count}</span>
+                    </button>
+                `;
+            });
+
+            nav.innerHTML = html;
+        }
+
+        function selectModule(modId) {
+            currentModuleFilter = modId;
+            
+            // Highlight active nav item
+            document.querySelectorAll("#module-nav-list button").forEach(btn => {
+                btn.className = btn.className.replace("border-navy-700 bg-navy-50 text-navy-800 font-semibold", "border-transparent text-slate-700 font-medium");
+            });
+
+            const activeBtn = document.getElementById(`nav-btn-${modId}`);
+            if (activeBtn) {
+                activeBtn.className = activeBtn.className.replace("border-transparent text-slate-700 font-medium", "border-navy-700 bg-navy-50 text-navy-800 font-semibold");
+            }
+
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const statusFilter = document.getElementById("filter-status").value;
+
+            activeFilteredList = ALL_QUESTIONS.filter(q => {
+                // Module match
+                if (currentModuleFilter !== "all" && q.moduleId !== currentModuleFilter) {
+                    return false;
+                }
+
+                // Status match
+                const userAns = userAnswers[q.id];
+                if (statusFilter === "unanswered" && userAns !== undefined) return false;
+                if (statusFilter === "incorrect" && (userAns === undefined || userAns === q.answer)) return false;
+                if (statusFilter === "vignette" && q.type !== "vignette") return false;
+                if (statusFilter === "theory" && q.type !== "theory") return false;
+
+                return true;
+            });
+
+            if (activeFilteredList.length === 0) {
+                document.getElementById("q-stem-text").innerText = "No questions match the selected filter criteria.";
+                document.getElementById("options-list").innerHTML = "";
+                document.getElementById("justification-box").classList.add("hidden");
+                document.getElementById("q-number-badge").innerText = "Q 0/0";
+                return;
+            }
+
+            activeQuestionIndex = 0;
+            renderCurrentQuestion();
+        }
+
+        function renderCurrentQuestion() {
+            if (activeFilteredList.length === 0) return;
+
+            const q = activeFilteredList[activeQuestionIndex];
+            const userAns = userAnswers[q.id];
+            const isAnswered = userAns !== undefined;
+            const showInstant = document.getElementById("toggle-instant-exp").checked;
+
+            // Header Meta
+            document.getElementById("q-number-badge").innerText = `Q${q.number} / 132`;
+            document.getElementById("q-module-name").innerText = q.moduleName;
+            
+            const typeBadge = document.getElementById("q-type-badge");
+            if (q.type === 'vignette') {
+                typeBadge.innerText = "CLINICAL VIGNETTE";
+                typeBadge.className = "px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800";
+            } else {
+                typeBadge.innerText = "SLIDE RECALL";
+                typeBadge.className = "px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-blue-100 text-blue-800";
+            }
+
+            // Stem
+            document.getElementById("q-stem-text").innerText = q.question;
+
+            // Render Options (A-E)
+            const optionsContainer = document.getElementById("options-list");
+            optionsContainer.innerHTML = q.options.map((opt, idx) => {
+                let btnStyle = "border-slate-200 hover:border-navy-700 bg-white text-slate-700";
+                let iconMarkup = `<span class="w-6 h-6 rounded-full border border-slate-300 text-slate-500 font-semibold text-xs flex items-center justify-center mr-3">${String.fromCharCode(65 + idx)}</span>`;
+
+                if (isAnswered) {
+                    if (showInstant || isExamMode) {
+                        if (idx === q.answer) {
+                            btnStyle = "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold";
+                            iconMarkup = `<span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center mr-3"><i class="fa-solid fa-check"></i></span>`;
+                        } else if (idx === userAns) {
+                            btnStyle = "border-rose-500 bg-rose-50 text-rose-900 font-semibold";
+                            iconMarkup = `<span class="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center mr-3"><i class="fa-solid fa-xmark"></i></span>`;
+                        }
+                    } else if (idx === userAns) {
+                        btnStyle = "border-navy-700 bg-navy-50 text-navy-900 font-semibold ring-2 ring-navy-700/20";
+                    }
+                }
+
+                return `
+                    <button onclick="selectAnswer(${idx})" ${isAnswered && showInstant ? 'disabled' : ''} class="w-full text-left p-4 rounded-xl border transition-all flex items-start ${btnStyle}">
+                        ${iconMarkup}
+                        <span class="flex-1 text-xs sm:text-sm leading-relaxed mt-0.5">${opt}</span>
+                    </button>
+                `;
+            }).join('');
+
+            // Justification Box
+            const justBox = document.getElementById("justification-box");
+            if (isAnswered && (showInstant || !isExamMode)) {
+                justBox.classList.remove("hidden");
+                document.getElementById("justification-text").innerText = q.justification;
+            } else {
+                justBox.classList.add("hidden");
+            }
+
+            // Footer Navigation Status
+            document.getElementById("q-counter-text").innerText = `${activeQuestionIndex + 1} of ${activeFilteredList.length} in view`;
+            document.getElementById("btn-prev").disabled = (activeQuestionIndex === 0);
+            document.getElementById("btn-next").disabled = (activeQuestionIndex === activeFilteredList.length - 1);
+        }
+
+        function selectAnswer(optIdx) {
+            const q = activeFilteredList[activeQuestionIndex];
+            userAnswers[q.id] = optIdx;
+            updateOverallProgress();
+            renderCurrentQuestion();
+        }
+
+        function navigate(dir) {
+            const newIndex = activeQuestionIndex + dir;
+            if (newIndex >= 0 && newIndex < activeFilteredList.length) {
+                activeQuestionIndex = newIndex;
+                renderCurrentQuestion();
+            }
+        }
+
+        function toggleInstantExplanation() {
+            renderCurrentQuestion();
+        }
+
+        function updateOverallProgress() {
+            let answered = 0;
+            let correct = 0;
+            let incorrect = 0;
+
+            ALL_QUESTIONS.forEach(q => {
+                const userAns = userAnswers[q.id];
+                if (userAns !== undefined) {
+                    answered++;
+                    if (userAns === q.answer) correct++;
+                    else incorrect++;
+                }
+            });
+
+            const total = ALL_QUESTIONS.length;
+            const percent = Math.round((answered / total) * 100);
+
+            document.getElementById("stat-answered").innerText = answered;
+            document.getElementById("stat-correct").innerText = correct;
+            document.getElementById("stat-incorrect").innerText = incorrect;
+            document.getElementById("overall-score-text").innerText = `${correct} / ${total} (${percent}%)`;
+            document.getElementById("overall-progress-bar").style.width = `${percent}%`;
+
+            // Update Module Badges
+            MODULES.forEach(m => {
+                const modQs = ALL_QUESTIONS.filter(q => q.moduleId === m.id);
+                const modAnswered = modQs.filter(q => userAnswers[q.id] !== undefined).length;
+                const badge = document.getElementById(`nav-badge-${m.id}`);
+                if (badge) {
+                    badge.innerText = `${modAnswered}/${m.count}`;
+                    if (modAnswered === m.count) {
+                        badge.className = "px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold";
+                    }
+                }
+            });
+        }
+
+        function resetModuleProgress() {
+            if (confirm("Are you sure you want to reset all recorded answers and scores?")) {
+                userAnswers = {};
+                updateOverallProgress();
+                applyFilters();
+            }
+        }
+
+        function toggleMode(mode) {
+            const practiceBtn = document.getElementById("mode-practice-btn");
+            const examBtn = document.getElementById("mode-exam-btn");
+            const timerDisplay = document.getElementById("exam-timer-display");
+
+            if (mode === 'exam') {
+                isExamMode = true;
+                practiceBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-slate-300 hover:text-white transition-colors";
+                examBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 text-white transition-colors";
+                timerDisplay.classList.remove("hidden");
+                timerDisplay.classList.add("flex");
+                startTimer(132 * 75); // 75 seconds per question for 132 questions
+            } else {
+                isExamMode = false;
+                clearInterval(examTimerInterval);
+                practiceBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-600 text-white transition-colors";
+                examBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-slate-300 hover:text-white transition-colors";
+                timerDisplay.classList.add("hidden");
+                timerDisplay.classList.remove("flex");
+            }
+            renderCurrentQuestion();
+        }
+
+        function startTimer(seconds) {
+            clearInterval(examTimerInterval);
+            examTimeRemaining = seconds;
+            updateTimerDisplay();
+
+            examTimerInterval = setInterval(() => {
+                examTimeRemaining--;
+                updateTimerDisplay();
+                if (examTimeRemaining <= 0) {
+                    clearInterval(examTimerInterval);
+                    alert("Exam Time Expired! Reviewing final results.");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const hrs = Math.floor(examTimeRemaining / 3600);
+            const mins = Math.floor((examTimeRemaining % 3600) / 60);
+            const secs = examTimeRemaining % 60;
+            document.getElementById("timer-text").innerText = 
+                `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
